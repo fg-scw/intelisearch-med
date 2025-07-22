@@ -1,0 +1,39 @@
+PATIENTE: Marie Martin, 52 ans
+
+MOTIF DE CONSULTATION:
+Dyspnée d'effort progressive depuis 6 mois
+
+HISTOIRE DE LA MALADIE:
+Essoufflement à l'effort devenu invalidant
+Toux sèche chronique
+Fatigue importante
+
+ANTÉCÉDENTS:
+- Tabagisme actif: 35 paquets-années
+- Pas d'exposition professionnelle connue
+
+EXAMEN CLINIQUE:
+FR: 22/min, SaO2: 92% air ambiant
+Auscultation: diminution du murmure vésiculaire
+Râles crépitants bilatéraux
+
+IMAGERIE:
+Scanner thoracique:
+- Emphysème pan-lobulaire diffus
+- Distension thoracique
+- Cœur pulmonaire chronique débutant
+
+EFR:
+VEMS: 42% de la théorique
+CVF: 78% de la théorique
+VEMS/CVF: 0.45
+
+DIAGNOSTIC:
+BPCO stade sévère (GOLD 3)
+Emphysème pan-lobulaire
+
+TRAITEMENT:
+Seretide 125/25: 2 bouffées matin et soir
+Spiriva 18mcg: 1 gélule/jour
+Sevrage tabagique urgent
+Réhabilitation respiratoire
