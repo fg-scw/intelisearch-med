@@ -1,0 +1,32 @@
+PATIENT: Jean Dupont, 65 ans
+
+MOTIF DE CONSULTATION:
+Douleur thoracique depuis 2 heures
+
+HISTOIRE DE LA MALADIE:
+Douleur constrictive rétrosternale irradiant vers le bras gauche.
+Apparition brutale au repos.
+Sueurs, nausées associées.
+
+ANTÉCÉDENTS:
+- HTA connue sous traitement
+- Tabagisme sevré depuis 5 ans
+- Dyslipidémie
+
+EXAMEN CLINIQUE:
+TA: 160/95 mmHg, FC: 95/min
+Auscultation cardiaque: normal
+Auscultation pulmonaire: normal
+
+EXAMENS COMPLÉMENTAIRES:
+ECG: sus-décalage ST en antérieur (D1, aVL, V1-V6)
+Troponines I: 15 ng/ml (N < 0.1)
+
+DIAGNOSTIC:
+Syndrome coronarien aigu ST+
+Infarctus du myocarde antérieur
+
+TRAITEMENT:
+Aspégic 250mg IV
+Plavix 600mg charge puis 75mg/j
+Angioplastie primaire urgente
