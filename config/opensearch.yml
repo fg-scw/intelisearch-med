@@ -1,8 +1,0 @@
-cluster.name: medical-search-cluster
-node.name: medical-search-node
-network.host: 0.0.0.0
-http.port: 9200
-discovery.type: single-node
-bootstrap.memory_lock: true
-indices.query.bool.max_clause_count: 10000
-plugins.security.disabled: true
