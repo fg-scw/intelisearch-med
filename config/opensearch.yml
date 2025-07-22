@@ -1,0 +1,25 @@
+# config/opensearch.yml
+# Configuration OpenSearch pour recherche médicale
+
+cluster.name: medical-search-cluster
+node.name: medical-search-node
+
+# Configuration réseau
+network.host: 0.0.0.0
+http.port: 9200
+
+# Configuration du cluster
+discovery.type: single-node
+cluster.initial_master_nodes: ["medical-search-node"]
+
+# Configuration de performance
+bootstrap.memory_lock: true
+indices.query.bool.max_clause_count: 10000
+
+# Configuration des plugins
+plugins.security.disabled: true
+
+
+
+
+

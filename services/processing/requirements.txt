@@ -1,0 +1,13 @@
+# services/processing/requirements.txt
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+asyncpg==0.29.0
+aioredis==2.0.1
+aiofiles==23.2.1
+opensearch-py==2.4.2
+sentence-transformers==2.2.2
+transformers==4.35.2
+torch==2.1.1
+numpy==1.24.3
+PyPDF2==3.0.1
+python-multipart==0.0.6
