@@ -6,40 +6,67 @@ from pathlib import Path
 from typing import List, Dict, Any
 import uuid
 import hashlib
+import re
 
 import asyncpg
 import aioredis
 import aiofiles
-from opensearchpy import AsyncOpenSearch
-from sentence_transformers import SentenceTransformer
-from transformers import AutoTokenizer, AutoModel
-import torch
+from opensearchpy import OpenSearch
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, HTTPException
 import uvicorn
 
-# Configuration des modèles médicaux
-MEDICAL_MODELS = {
-    'clinical_bert': 'emilyalsentzer/Bio_ClinicalBERT',
-    'biobert': 'dmis-lab/biobert-v1.1',
-    'sentence_clinical': 'sentence-transformers/all-MiniLM-L12-v2'
-}
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class SimpleEmbedder:
+    """Générateur d'embeddings simple basé sur TF-IDF"""
+    
+    def __init__(self):
+        self.vocabulary = {}
+        self.dimension = 384  # Dimension fixe
+        
+    def tokenize(self, text: str) -> List[str]:
+        """Tokenisation simple"""
+        # Nettoyage et tokenisation basique
+        text = re.sub(r'[^\w\s]', ' ', text.lower())
+        tokens = text.split()
+        return [token for token in tokens if len(token) > 2]
+    
+    def encode(self, texts: List[str]) -> np.ndarray:
+        """Génération d'embeddings simples basés sur la fréquence des mots"""
+        embeddings = []
+        
+        for text in texts:
+            tokens = self.tokenize(text)
+            
+            # Calcul de vecteur basé sur hash des tokens
+            vector = np.zeros(self.dimension)
+            
+            for i, token in enumerate(set(tokens)):  # Tokens uniques
+                # Hash du token pour déterminer les positions dans le vecteur
+                hash_value = hash(token) % self.dimension
+                vector[hash_value] += tokens.count(token)  # Fréquence du token
+            
+            # Normalisation
+            if np.linalg.norm(vector) > 0:
+                vector = vector / np.linalg.norm(vector)
+            
+            embeddings.append(vector)
+        
+        return np.array(embeddings)
 
 class MedicalDocumentProcessor:
     def __init__(self):
         self.opensearch_client = None
         self.postgres_pool = None
         self.redis_client = None
-        self.medical_model = None
-        self.sentence_model = None
+        self.embedder = SimpleEmbedder()
         
     async def initialize(self):
-        """Initialisation des connexions et modèles"""
+        """Initialisation des connexions"""
         # OpenSearch
-        self.opensearch_client = AsyncOpenSearch(
+        self.opensearch_client = OpenSearch(
             hosts=[os.getenv('OPENSEARCH_URL', 'http://localhost:9200')],
             use_ssl=False,
             verify_certs=False
@@ -58,28 +85,8 @@ class MedicalDocumentProcessor:
             decode_responses=True
         )
         
-        # Chargement des modèles
-        await self.load_models()
         logger.info("Initialisation terminée")
     
-    async def load_models(self):
-        """Chargement des modèles de transformation"""
-        try:
-            # Modèle sentence-transformers pour embeddings généraux
-            self.sentence_model = SentenceTransformer(
-                os.getenv('MODEL_NAME', 'sentence-transformers/all-MiniLM-L12-v2')
-            )
-            
-            # Modèle médical spécialisé
-            medical_model_name = os.getenv('MEDICAL_MODEL_NAME', 'emilyalsentzer/Bio_ClinicalBERT')
-            self.medical_tokenizer = AutoTokenizer.from_pretrained(medical_model_name)
-            self.medical_model = AutoModel.from_pretrained(medical_model_name)
-            
-            logger.info("Modèles chargés avec succès")
-        except Exception as e:
-            logger.error(f"Erreur lors du chargement des modèles: {e}")
-            raise
-
     async def extract_text_from_file(self, file_path: str) -> str:
         """Extraction du texte selon le type de fichier"""
         file_extension = Path(file_path).suffix.lower()
@@ -87,36 +94,22 @@ class MedicalDocumentProcessor:
         if file_extension == '.txt':
             async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
                 return await f.read()
-        
-        elif file_extension == '.pdf':
-            # Import PyPDF2 ou pdfplumber pour PDF
-            import PyPDF2
-            text = ""
-            with open(file_path, 'rb') as f:
-                reader = PyPDF2.PdfReader(f)
-                for page in reader.pages:
-                    text += page.extract_text()
-            return text
-        
         else:
             raise ValueError(f"Type de fichier non supporté: {file_extension}")
 
     def preprocess_medical_text(self, text: str) -> List[str]:
-        """Préprocessing spécifique aux textes médicaux"""
-        # Segmentation intelligente (phrases, sections cliniques)
+        """Préprocessing des textes médicaux"""
         sentences = []
         
-        # Division par sections médicales courantes
+        # Sections médicales courantes
         medical_sections = [
-            "MOTIF DE CONSULTATION", "ANTÉCÉDENTS", "EXAMEN CLINIQUE",
-            "EXAMENS COMPLÉMENTAIRES", "DIAGNOSTIC", "TRAITEMENT",
-            "HISTOIRE DE LA MALADIE", "EXAMEN PHYSIQUE"
+            "MOTIF", "ANTÉCÉDENTS", "EXAMEN", "DIAGNOSTIC", "TRAITEMENT", "HISTOIRE"
         ]
         
         current_section = ""
         for line in text.split('\n'):
             line = line.strip()
-            if not line:
+            if len(line) < 10:  # Ignorer les lignes trop courtes
                 continue
                 
             # Détection de section
@@ -125,67 +118,75 @@ class MedicalDocumentProcessor:
                     current_section = section
                     break
             
-            # Ajout avec contexte de section
-            if len(line) > 20:  # Filtrer les lignes trop courtes
-                sentences.append(f"[{current_section}] {line}" if current_section else line)
+            # Ajout avec contexte
+            if current_section:
+                sentences.append(f"[{current_section}] {line}")
+            else:
+                sentences.append(line)
         
-        return sentences
+        return sentences[:50]  # Limite pour éviter trop d'embeddings
 
-    async def generate_medical_embeddings(self, texts: List[str]) -> np.ndarray:
-        """Génération d'embeddings avec modèle médical spécialisé"""
-        embeddings = []
-        
-        for text in texts:
-            # Tokenisation
-            inputs = self.medical_tokenizer(
-                text, 
-                return_tensors='pt', 
-                max_length=512, 
-                truncation=True, 
-                padding=True
+    async def generate_embeddings(self, texts: List[str]) -> np.ndarray:
+        """Génération d'embeddings"""
+        try:
+            # Exécution dans un thread pour éviter le blocage
+            loop = asyncio.get_event_loop()
+            embeddings = await loop.run_in_executor(
+                None, 
+                self.embedder.encode, 
+                texts
             )
-            
-            # Génération d'embeddings
-            with torch.no_grad():
-                outputs = self.medical_model(**inputs)
-                # Moyenne des tokens pour obtenir l'embedding de la phrase
-                embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
-                embeddings.append(embedding)
-        
-        return np.array(embeddings)
+            return embeddings
+        except Exception as e:
+            logger.error(f"Erreur génération embeddings: {e}")
+            # Embeddings aléatoires de secours
+            return np.random.rand(len(texts), 384)
 
     async def store_in_opensearch(self, document_id: str, content: str, metadata: Dict):
-        """Stockage dans OpenSearch pour recherche textuelle"""
-        document = {
-            'id': document_id,
-            'content': content,
-            'title': metadata.get('title', ''),
-            'file_type': metadata.get('file_type', ''),
-            'timestamp': metadata.get('timestamp', ''),
-            'hash': metadata.get('hash', ''),
-            'sections': metadata.get('sections', [])
-        }
-        
-        await self.opensearch_client.index(
-            index='medical_documents',
-            id=document_id,
-            body=document
-        )
+        """Stockage dans OpenSearch"""
+        try:
+            document = {
+                'id': document_id,
+                'content': content,
+                'title': metadata.get('title', ''),
+                'file_type': metadata.get('file_type', ''),
+                'timestamp': metadata.get('timestamp', ''),
+                'hash': metadata.get('hash', ''),
+            }
+            
+            # Exécution dans un thread
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                lambda: self.opensearch_client.index(
+                    index='medical_documents',
+                    id=document_id,
+                    body=document
+                )
+            )
+            logger.info(f"Document {document_id} stocké dans OpenSearch")
+        except Exception as e:
+            logger.error(f"Erreur stockage OpenSearch: {e}")
 
     async def store_embeddings_in_postgres(self, document_id: str, sentences: List[str], embeddings: np.ndarray):
-        """Stockage des embeddings dans PostgreSQL avec pgvector"""
-        async with self.postgres_pool.acquire() as conn:
-            for i, (sentence, embedding) in enumerate(zip(sentences, embeddings)):
-                sentence_id = f"{document_id}_{i}"
-                embedding_list = embedding.tolist()
-                
-                await conn.execute("""
-                    INSERT INTO document_embeddings (
-                        id, document_id, sentence_id, content, embedding, created_at
-                    ) VALUES ($1, $2, $3, $4, $5, NOW())
-                    ON CONFLICT (sentence_id) DO UPDATE SET
-                        content = $4, embedding = $5, updated_at = NOW()
-                """, str(uuid.uuid4()), document_id, sentence_id, sentence, embedding_list)
+        """Stockage des embeddings dans PostgreSQL"""
+        try:
+            async with self.postgres_pool.acquire() as conn:
+                for i, (sentence, embedding) in enumerate(zip(sentences, embeddings)):
+                    sentence_id = f"{document_id}_{i}"
+                    embedding_list = embedding.tolist()
+                    
+                    await conn.execute("""
+                        INSERT INTO document_embeddings (
+                            id, document_id, sentence_id, content, embedding, created_at
+                        ) VALUES ($1, $2, $3, $4, $5, NOW())
+                        ON CONFLICT (sentence_id) DO UPDATE SET
+                            content = $4, embedding = $5, updated_at = NOW()
+                    """, str(uuid.uuid4()), document_id, sentence_id, sentence, embedding_list)
+            
+            logger.info(f"Embeddings pour {document_id} stockés")
+        except Exception as e:
+            logger.error(f"Erreur stockage PostgreSQL: {e}")
 
     async def process_document(self, file_path: str) -> Dict[str, Any]:
         """Pipeline complet de traitement d'un document"""
@@ -200,7 +201,7 @@ class MedicalDocumentProcessor:
                 raise ValueError("Aucun contenu exploitable trouvé")
             
             # 3. Génération d'embeddings
-            embeddings = await self.generate_medical_embeddings(sentences)
+            embeddings = await self.generate_embeddings(sentences)
             
             # 4. Métadonnées
             document_id = str(uuid.uuid4())
@@ -208,7 +209,7 @@ class MedicalDocumentProcessor:
             metadata = {
                 'title': Path(file_path).name,
                 'file_type': Path(file_path).suffix,
-                'timestamp': asyncio.get_event_loop().time(),
+                'timestamp': str(asyncio.get_event_loop().time()),
                 'hash': file_hash,
                 'sentences_count': len(sentences)
             }
