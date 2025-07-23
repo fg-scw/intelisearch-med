@@ -1,0 +1,6 @@
+ID_PATIENT: 123456
+MOTIF: Mal de tête intense et récurrent.
+HISTORIQUE: Femme de 35 ans, sans antécédent notable. Décrit des épisodes de céphalée pulsatile, localisée à un seul côté de la tête (hémicrânie). La douleur est accompagnée d'une forte sensibilité à la lumière (photophobie) et au son (phonophobie), ainsi que de nausées.
+EXAMENS: L'examen neurologique est normal. L'imagerie cérébrale (IRM) n'a révélé aucune anomalie structurelle.
+DIAGNOSTIC: Migraine chronique sans aura.
+TRAITEMENT: Triptan en cas de crise et mise en place d'un traitement prophylactique par Topiramate.

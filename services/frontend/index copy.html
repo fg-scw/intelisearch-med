@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recherche Médicale Avancée</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 20px; 
+            background: #f4f7f9; 
+            color: #333;
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+        }
+        h1, h2 { 
+            color: #2c3e50; 
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .section { 
+            margin-top: 25px; 
+            padding: 20px; 
+            background: #fdfdfd; 
+            border-radius: 8px; 
+            border-left: 5px solid;
+        }
+        .upload-section { border-left-color: #28a745; }
+        .search-section { border-left-color: #007bff; }
+        .stats-section { border-left-color: #17a2b8; }
+        .admin-section { border-left-color: #dc3545; } /* Style pour la nouvelle section */
+
+        input, button, select { 
+            padding: 10px 15px; 
+            margin: 5px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px;
+            font-size: 1em;
+            vertical-align: middle;
+        }
+        button { 
+            background-color: #007bff; 
+            color: white; 
+            cursor: pointer; 
+            border: none; 
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #0056b3; }
+        .admin-section button { background-color: #dc3545; }
+        .admin-section button:hover { background-color: #c82333; }
+        
+        .result { 
+            margin-top: 15px; 
+            padding: 15px; 
+            background: white; 
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid #007bff; 
+            border-radius: 5px; 
+        }
+        .result h4 { margin: 0 0 10px 0; }
+        .result .scores { font-size: 0.9em; color: #6c757d; margin: 10px 0; }
+        .result .snippet { line-height: 1.6; }
+        
+        .status { 
+            padding: 10px; 
+            margin-top: 10px; 
+            border-radius: 5px; 
+            border: 1px solid;
+        }
+        .status.success { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .status.info { background: #d1ecf1; color: #0c5460; border-color: #bee5eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 Recherche Médicale Avancée</h1>
+        
+        <div class="section upload-section">
+            <h2>📄 Uploader un Document</h2>
+            <div>
+                <input type="file" id="fileInput" accept=".txt" />
+                <button onclick="uploadFile()">Uploader le Fichier</button>
+            </div>
+            <div id="uploadStatus"></div>
+        </div>
+
+        <div class="section search-section">
+            <h2>🔍 Recherche Intelligente</h2>
+            <div>
+                <input type="text" id="searchInput" placeholder="Ex: douleur thoracique, asthme allergique..." style="width: 70%;">
+                <select id="searchType" style="margin-left: 10px;">
+                    <option value="hybrid">Hybride</option>
+                    <option value="textual">Textuelle</option>
+                    <option value="semantic">Sémantique</option>
+                </select>
+                <button onclick="search()">Rechercher</button>
+            </div>
+            <div id="results"></div>
+        </div>
+        
+        <div class="section admin-section">
+            <h2>⚙️ Administration</h2>
+            <div>
+                <p>Actions de maintenance pour le système. À utiliser pour repartir d'une base de données vide.</p>
+                <button onclick="resetAllData()">Réinitialiser les Données</button>
+                <div style="margin-top: 15px;">
+                    <label for="datasetInput">Charger un jeu de données (multi-fichiers) :</label>
+                    <br>
+                    <input type="file" id="datasetInput" multiple accept=".txt" style="margin-top:5px;" />
+                    <button onclick="uploadDataset()">Lancer le Chargement</button>
+                </div>
+            </div>
+            <div id="adminStatus"></div>
+        </div>
+
+        <div class="section stats-section">
+            <h2>📊 Statistiques du Système</h2>
+            <button onclick="loadStats()">Actualiser</button>
+            <div id="stats" style="margin-top: 10px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+        const PROCESSING_BASE = `${window.location.protocol}//${window.location.hostname}:8001`;
+        
+        function showStatus(elementId, message, type = "info") {
+            const statusDiv = document.getElementById(elementId);
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function appendStatus(elementId, message, type = "info") {
+            const statusDiv = document.getElementById(elementId);
+            statusDiv.innerHTML += `<div class="status ${type}">${message}</div>`;
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById("fileInput");
+            if (!fileInput.files[0]) {
+                showStatus("uploadStatus", "Veuillez sélectionner un fichier", "error");
+                return;
+            }
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            showStatus("uploadStatus", "Upload en cours...", "info");
+
+            try {
+                const response = await fetch(`${PROCESSING_BASE}/upload`, { method: "POST", body: formData });
+                const result = await response.json();
+                if (!response.ok || result.status === 'error') throw new Error(result.error || "Erreur inconnue");
+                showStatus("uploadStatus", `✅ Document traité avec succès! ID: ${result.document_id}`, "success");
+                loadStats();
+            } catch (error) {
+                showStatus("uploadStatus", `❌ Erreur de connexion ou de traitement: ${error.message}`, "error");
+            }
+        }
+
+        async function search() {
+            const query = document.getElementById("searchInput").value;
+            const searchType = document.getElementById("searchType").value;
+            if (!query.trim()) return;
+
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = `<div class="status info">Recherche en cours...</div>`;
+
+            try {
+                const response = await fetch(`${API_BASE}/search`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ query, search_type: searchType, limit: 10 })
+                });
+                if (!response.ok) throw new Error(`Erreur serveur: ${response.statusText}`);
+                const results = await response.json();
+                displayResults(results, query);
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="status error">❌ Erreur de recherche: ${error.message}</div>`;
+            }
+        }
+
+        function displayResults(results, query) {
+            const resultsDiv = document.getElementById("results");
+            if (!results || results.length === 0) {
+                resultsDiv.innerHTML = `<div class="status info">Aucun résultat trouvé pour "${query}"</div>`;
+                return;
+            }
+
+            let html = `<h3>Résultats (${results.length})</h3>`;
+            results.forEach(result => {
+                html += `
+                    <div class="result">
+                        <h4>${result.title}</h4>
+                        <div class="scores">
+                            <strong>Score Hybride:</strong> ${result.hybrid_score.toFixed(4)} | 
+                            <strong>Textuel:</strong> ${result.relevance_score.toFixed(2)} | 
+                            <strong>Sémantique:</strong> ${result.semantic_score.toFixed(4)}
+                        </div>
+                        <div class="snippet"><strong>Snippet:</strong> ${result.snippet}</div>
+                    </div>
+                `;
+            });
+            resultsDiv.innerHTML = html;
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                if (!response.ok) throw new Error('Réponse serveur non OK');
+                const stats = await response.json();
+                document.getElementById("stats").innerHTML = `
+                    <p><strong>Documents Indexés (OpenSearch):</strong> ${stats.indexed_documents_opensearch}</p>
+                    <p><strong>Documents Uniques (PostgreSQL):</strong> ${stats.unique_documents_postgres}</p>
+                    <p><strong>Embeddings Totaux (PostgreSQL):</strong> ${stats.total_embeddings_postgres}</p>
+                `;
+            } catch (error) {
+                document.getElementById("stats").innerHTML = `<div class="status error">Erreur chargement stats: ${error.message}</div>`;
+            }
+        }
+        
+        async function resetAllData() {
+            if (!confirm("Êtes-vous sûr de vouloir supprimer TOUTES les données ? Cette action est irréversible.")) return;
+            showStatus("adminStatus", "Réinitialisation en cours...", "info");
+            try {
+                const response = await fetch(`${API_BASE}/admin/reset`, { method: "POST" });
+                if (!response.ok) throw new Error(`Erreur serveur: ${response.statusText}`);
+                const result = await response.json();
+                showStatus("adminStatus", `✅ ${result.message}`, "success");
+                loadStats();
+                document.getElementById("results").innerHTML = "";
+            } catch (error) {
+                showStatus("adminStatus", `❌ Erreur lors de la réinitialisation: ${error.message}`, "error");
+            }
+        }
+
+        async function uploadDataset() {
+            const files = document.getElementById("datasetInput").files;
+            if (files.length === 0) {
+                alert("Veuillez sélectionner des fichiers.");
+                return;
+            }
+            const adminStatusDiv = document.getElementById("adminStatus");
+            adminStatusDiv.innerHTML = '';
+            let successCount = 0, errorCount = 0;
+
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append("file", file);
+                appendStatus("adminStatus", `Upload de ${file.name}...`, "info");
+                try {
+                    const response = await fetch(`${PROCESSING_BASE}/upload`, { method: "POST", body: formData });
+                    const result = await response.json();
+                    if (!response.ok || result.status === 'error') throw new Error(result.error || `Erreur d'upload`);
+                    appendStatus("adminStatus", `✅ ${file.name} traité avec succès.`, "success");
+                    successCount++;
+                } catch (error) {
+                    appendStatus("adminStatus", `❌ Échec pour ${file.name}: ${error.message}`, "error");
+                    errorCount++;
+                }
+            }
+            appendStatus("adminStatus", `<strong>Chargement terminé : ${successCount} succès, ${errorCount} échecs.</strong>`, "info");
+            loadStats();
+        }
+
+        window.onload = loadStats;
+    </script>
+</body>
+</html>

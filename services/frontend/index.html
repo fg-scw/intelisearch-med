@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>InteliSearch Med - Recherche de Dossiers</title>
+    <style>
+        :root {
+            --primary-color: #005A9C; /* Bleu institutionnel */
+            --secondary-color: #3a76a8;
+            --background-color: #f5f8fa;
+            --surface-color: #ffffff;
+            --text-color: #333333;
+            --border-color: #dee2e6;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body { 
+            font-family: var(--font-family);
+            margin: 0; 
+            background-color: var(--background-color); 
+            color: var(--text-color);
+        }
+
+        .main-container { 
+            max-width: 1000px; 
+            margin: 2em auto; 
+        }
+
+        header h1 {
+            color: var(--primary-color);
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 1.5em;
+        }
+
+        .tab-navigation {
+            display: flex;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .tab-button {
+            padding: 12px 20px;
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            font-size: 1.1em;
+            font-weight: 500;
+            color: var(--secondary-color);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .tab-button:hover {
+            background-color: #e9ecef;
+        }
+
+        .tab-button.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 2em;
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        h2 {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-top: 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5em;
+        }
+
+        input, button, select { 
+            padding: 10px 15px; 
+            margin: 5px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px;
+            font-size: 1em;
+            vertical-align: middle;
+        }
+        
+        button { 
+            background-color: var(--primary-color); 
+            color: white; 
+            cursor: pointer; 
+            border: none; 
+            font-weight: 500;
+            transition: background-color 0.2s ease-in-out;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .search-bar { display: flex; width: 100%; }
+        .search-bar input { flex-grow: 1; margin-left: 0; }
+        .search-bar select { flex-shrink: 0; }
+        
+        .result { 
+            margin-top: 1.5em; 
+            padding: 1em;
+            background: #fafafa;
+            border: 1px solid var(--border-color);
+            border-radius: 5px; 
+        }
+        .result h4 { margin: 0 0 10px 0; font-size: 1.1em; }
+        .result .scores { font-size: 0.85em; color: #6c757d; margin: 10px 0; }
+        .result .snippet { line-height: 1.6; }
+        
+        .status { 
+            padding: 12px; 
+            margin-top: 1em; 
+            border-radius: 5px; 
+            border: 1px solid;
+        }
+        .status.success { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .status.info { background: #d1ecf1; color: #0c5460; border-color: #bee5eb; }
+
+        .admin-actions button { background-color: var(--danger-color); }
+        
+        .loader {
+            text-align: center;
+            padding: 2em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <header>
+            <h1>InteliSearch Med</h1>
+        </header>
+
+        <nav class="tab-navigation">
+            <button class="tab-button active" onclick="openTab(event, 'Search')">🔍 Recherche</button>
+            <button class="tab-button" onclick="openTab(event, 'Upload')">➕ Gestion des Documents</button>
+            <button class="tab-button" onclick="openTab(event, 'System')">⚙️ Système</button>
+        </nav>
+
+        <div id="Search" class="tab-content active">
+            <h2>Rechercher un Dossier ou un Cas Clinique</h2>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Entrez des mots-clés, symptômes, diagnostics...">
+                <select id="searchType">
+                    <option value="hybrid">Recherche Hybride</option>
+                    <option value="textual">Recherche Textuelle</option>
+                    <option value="semantic">Recherche Sémantique</option>
+                </select>
+                <button onclick="search()">Rechercher</button>
+            </div>
+            <div id="results"></div>
+        </div>
+
+        <div id="Upload" class="tab-content">
+            <h2>Ajouter des Documents</h2>
+            <div class="upload-area">
+                <h4>Uploader un fichier unique</h4>
+                <input type="file" id="fileInput" accept=".txt" />
+                <button onclick="uploadFile()">Uploader le Fichier</button>
+                <div id="uploadStatus" class="status-container"></div>
+            </div>
+            <hr style="margin: 2em 0;">
+            <div class="upload-area">
+                <h4>Charger un jeu de données complet</h4>
+                <input type="file" id="datasetInput" multiple accept=".txt" />
+                <button onclick="uploadDataset()">Lancer le Chargement</button>
+                <div id="datasetStatus" class="status-container"></div>
+            </div>
+        </div>
+
+        <div id="System" class="tab-content">
+            <h2>État et Maintenance du Système</h2>
+            <div id="stats">
+                <p>Chargement des statistiques...</p>
+            </div>
+            <button onclick="loadStats()">Actualiser les Statistiques</button>
+            <hr style="margin: 2em 0;">
+            <div class="admin-actions">
+                <h4>Zone de Maintenance</h4>
+                <p>Cette action supprimera toutes les données indexées. À n'utiliser qu'en cas de besoin pour repartir sur une base propre.</p>
+                <button onclick="resetAllData()">Réinitialiser le Système</button>
+                <div id="resetStatus" class="status-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+        const PROCESSING_BASE = `${window.location.protocol}//${window.location.hostname}:8001`;
+
+        // --- Logique des Onglets ---
+        function openTab(evt, tabName) {
+            let i, tabcontent, tabbuttons;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].className = tabbuttons[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+            if (tabName === 'System') loadStats(); // Actualise les stats en ouvrant l'onglet
+        }
+
+        // --- Fonctions de Statut et de Feedback ---
+        function showStatus(elementId, message, type = "info") {
+            const statusDiv = document.getElementById(elementId);
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function appendStatus(elementId, message, type = "info") {
+            const statusDiv = document.getElementById(elementId);
+            statusDiv.innerHTML += `<div class="status ${type}">${message}</div>`;
+        }
+
+        // --- Fonctions API ---
+        async function uploadFile() {
+            const fileInput = document.getElementById("fileInput");
+            if (!fileInput.files[0]) {
+                showStatus("uploadStatus", "Veuillez sélectionner un fichier.", "error");
+                return;
+            }
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            showStatus("uploadStatus", "Traitement du fichier en cours...", "info");
+
+            try {
+                const response = await fetch(`${PROCESSING_BASE}/upload`, { method: "POST", body: formData });
+                const result = await response.json();
+                if (!response.ok || result.status === 'error') throw new Error(result.error || "Erreur inconnue");
+                showStatus("uploadStatus", `✅ Document traité avec succès (ID: ${result.document_id})`, "success");
+            } catch (error) {
+                showStatus("uploadStatus", `❌ Erreur : ${error.message}`, "error");
+            }
+        }
+        
+        async function uploadDataset() {
+            const files = document.getElementById("datasetInput").files;
+            if (files.length === 0) {
+                showStatus("datasetStatus", "Veuillez sélectionner des fichiers.", "error");
+                return;
+            }
+            const statusDiv = document.getElementById("datasetStatus");
+            statusDiv.innerHTML = '';
+            let successCount = 0, errorCount = 0;
+
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append("file", file);
+                try {
+                    const response = await fetch(`${PROCESSING_BASE}/upload`, { method: "POST", body: formData });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    successCount++;
+                    appendStatus("datasetStatus", `✅ ${file.name} traité.`, "success");
+                } catch (error) {
+                    errorCount++;
+                    appendStatus("datasetStatus", `❌ Échec pour ${file.name}: ${error.message}`, "error");
+                }
+            }
+            appendStatus("datasetStatus", `<strong>Chargement terminé : ${successCount} succès, ${errorCount} échecs.</strong>`, "info");
+            loadStats();
+        }
+
+        async function search() {
+            const query = document.getElementById("searchInput").value;
+            if (!query.trim()) return;
+            const searchType = document.getElementById("searchType").value;
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = `<div class="loader">Recherche en cours...</div>`;
+
+            try {
+                const response = await fetch(`${API_BASE}/search`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ query, search_type: searchType, limit: 10 })
+                });
+                if (!response.ok) throw new Error(`Erreur serveur: ${response.statusText}`);
+                const results = await response.json();
+                displayResults(results, query);
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="status error">❌ Erreur de recherche: ${error.message}</div>`;
+            }
+        }
+
+        function displayResults(results, query) {
+            const resultsDiv = document.getElementById("results");
+            if (!results || results.length === 0) {
+                resultsDiv.innerHTML = `<div class="status info">Aucun résultat trouvé pour "${query}"</div>`;
+                return;
+            }
+            let html = `<h3>${results.length} Résultat(s)</h3>`;
+            results.forEach(result => {
+                html += `
+                    <div class="result">
+                        <h4>${result.title}</h4>
+                        <div class="scores">
+                            <strong>Score Hybride:</strong> ${result.hybrid_score.toFixed(4)} | 
+                            <strong>Pertinence Textuelle:</strong> ${result.relevance_score.toFixed(2)} | 
+                            <strong>Similarité Sémantique:</strong> ${result.semantic_score.toFixed(4)}
+                        </div>
+                        <div class="snippet"><strong>Extrait pertinent :</strong> ${result.snippet}</div>
+                    </div>
+                `;
+            });
+            resultsDiv.innerHTML = html;
+        }
+
+        async function loadStats() {
+            const statsDiv = document.getElementById("stats");
+            statsDiv.innerHTML = `<p>Chargement des statistiques...</p>`;
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                if (!response.ok) throw new Error('Réponse serveur non OK');
+                const stats = await response.json();
+                statsDiv.innerHTML = `
+                    <p><strong>Documents dans OpenSearch :</strong> ${stats.indexed_documents_opensearch}</p>
+                    <p><strong>Dossiers Uniques dans PostgreSQL :</strong> ${stats.unique_documents_postgres}</p>
+                    <p><strong>Extraits Sémantiques (Embeddings) :</strong> ${stats.total_embeddings_postgres}</p>
+                `;
+            } catch (error) {
+                statsDiv.innerHTML = `<div class="status error">Erreur de chargement des statistiques : ${error.message}</div>`;
+            }
+        }
+        
+        async function resetAllData() {
+            if (!confirm("ATTENTION : Voulez-vous vraiment supprimer toutes les données du système ? Cette action est irréversible.")) return;
+            showStatus("resetStatus", "Réinitialisation en cours...", "info");
+            try {
+                const response = await fetch(`${API_BASE}/admin/reset`, { method: "POST" });
+                if (!response.ok) throw new Error(`Erreur serveur: ${response.statusText}`);
+                const result = await response.json();
+                showStatus("resetStatus", `✅ ${result.message}`, "success");
+                loadStats();
+                document.getElementById("results").innerHTML = "";
+            } catch (error) {
+                showStatus("resetStatus", `❌ Erreur lors de la réinitialisation: ${error.message}`, "error");
+            }
+        }
+
+        // --- Initialisation ---
+        window.onload = () => {
+            // Activer le premier onglet par défaut
+            document.querySelector('.tab-button').click();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+ID_PATIENT: 987654
+MOTIF: Douleurs abdominales chroniques et diarrhée.
+HISTORIQUE: Homme de 25 ans, suivi pour des crampes abdominales diffuses et une diarrhée non sanglante évoluant par poussées depuis deux ans. A perdu 5 kg.
+EXAMENS: Coloscopie avec biopsies révèle une inflammation transmurale et discontinue du côlon, avec présence de granulomes épithélioïdes sans nécrose caséeuse.
+DIAGNOSTIC: Maladie de Crohn iléo-colique.
+TRAITEMENT: Introduction d'un traitement par anti-TNF alpha (Infliximab) pour induire la rémission.

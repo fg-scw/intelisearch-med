@@ -1,0 +1,6 @@
+ID_PATIENT: 456789
+MOTIF: Gêne respiratoire intermittente.
+HISTORIQUE: Patiente de 28 ans, connue pour des allergies saisonnières. Se plaint depuis plusieurs mois de quintes de toux, surtout la nuit, et d'une sensation d'étouffement lors d'efforts physiques. Entend des sifflements à l'expiration.
+EXAMENS: Spirométrie montre un trouble ventilatoire obstructif réversible après administration de bronchodilatateurs (Salbutamol).
+DIAGNOSTIC: Crise d'asthme allergique.
+TRAITEMENT: Prescription d'un traitement de fond par corticoïdes inhalés et d'un traitement de crise à la demande.

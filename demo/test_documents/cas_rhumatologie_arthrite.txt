@@ -1,0 +1,6 @@
+ID_PATIENT: 654321
+MOTIF: Douleurs aux mains et aux poignets.
+HISTORIQUE: Femme de 55 ans, se plaignant d'une raideur matinale des articulations durant plus d'une heure. L'inflammation touche de manière symétrique les poignets et les petites articulations des doigts.
+EXAMENS: Biologie montre un facteur rhumatoïde positif et des anticorps anti-CCP élevés.
+DIAGNOSTIC: Polyarthrite rhumatoïde séropositive.
+TRAITEMENT: Initiation d'un traitement de fond par Méthotrexate.

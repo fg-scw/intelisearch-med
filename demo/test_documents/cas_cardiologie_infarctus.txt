@@ -1,0 +1,6 @@
+ID_PATIENT: 789123
+MOTIF: Douleur thoracique aiguë rétrosternale.
+HISTORIQUE: Patient de 62 ans, HTA, tabagisme. Arrivé aux urgences avec une douleur constrictive irradiant vers la mâchoire.
+EXAMENS: ECG montre un sus-décalage du segment ST en V1-V4. Les marqueurs cardiaques sont élevés avec des Troponines I ultra-sensibles à 2500 ng/L.
+DIAGNOSTIC: Syndrome coronarien aigu avec sus-décalage de ST (STEMI) antérieur.
+TRAITEMENT: Administration d'acide acétylsalicylique et de Ticagrelor. Transfert immédiat en salle de coronarographie pour une angioplastie primaire.
